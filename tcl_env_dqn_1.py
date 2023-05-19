@@ -14,6 +14,7 @@ import gym
 import gym.spaces as spaces
 import threading
 import math
+import matplotlib
 
 # Default parameters for
 # default TCL environment.
@@ -462,7 +463,6 @@ class MicroGridEnv(gym.Env):
         # Build up the representation of the current state (in the next timestep)
         state = self._build_state()
 
-
         terminal = self.time_step == self.iterations
         # if terminal:
 
@@ -510,6 +510,7 @@ class MicroGridEnv(gym.Env):
         return self._build_state()
 
     def render(self,name=''):
+        
         SOCS_RENDER.append([tcl.SoC*100 for tcl in self.tcls])
         LOADS_RENDER.append([l.load() for l in self.loads])
         PRICE_RENDER.append(self.sale_price)
@@ -523,128 +524,195 @@ class MicroGridEnv(gym.Env):
         TCL_CONSUMPTION_RENDER.append(self._compute_tcl_power())
         TOTAL_CONSUMPTION_RENDER.append(self._compute_tcl_power()+np.sum([l.load() for l in self.loads]))
         TEMP_RENDER.append(self.temperatures[self.day*self.iterations+self.time_step-1])
+
+        fontsize1 = 12
+        fontsize2 = 15
+        import os
         if self.time_step==self.iterations:
-            fig=plt.figure()
+            if name=='':
+                name = 'runs'
+
+            if not os.path.exists(f"{name}"):
+                # Create the "plots" folder
+                os.makedirs(f"{name}")
+            foldername= f'{name}'
+            matplotlib.rc('xtick', labelsize=13) 
+            matplotlib.rc('ytick', labelsize=13) 
+            fig=plt.figure(figsize=(6,3.54))
             # ax = pyplot.axes()
+            # ax = plt.axes()
+            # ax = ax.twinx()
+            # ax.set_ylabel("Temperature °C")
+            # ax.plot(np.array(TEMP_RENDER))
+            # plt.title("outdoor Temperatures")
+            # plt.xlabel("Time (h)")
+            # plt.legend(["Outdoor Temperatures"], loc='lower right')
+            # plt.savefig(f"{foldername}/Temperature")
+            # plt.show()
+            
+
             ax = plt.subplot(2, 1, 1)
             plt.axhspan(0, 100, facecolor='g', alpha=0.5)
 
             ax.set_facecolor("silver")
             ax.yaxis.grid(True)
-
+            print(SOCS_RENDER)
             ax.set_ylabel("TCLs state of charge %")
             ax.boxplot(SOCS_RENDER, positions=range(24))
 
             ax1 = ax.twinx()
             ax1.set_ylabel("Temperatures °C")
             ax1.plot(np.array(TEMP_RENDER), '--')
-            plt.title("TCLs state of charge and outdoor Temperatures")
-            plt.xlabel("Time (h)")
+            #plt.title("TCLs state of charge and outdoor Temperatures")
+            plt.xlabel("Time (h)", fontsize=fontsize1)
             plt.legend(["Outdoor Temperatures"], loc='lower right')
-            # plt.show()
+            plt.savefig(f"{foldername}/TLCssoc")
 
-            ax = plt.subplot(2, 1, 2)
-            ax.set_facecolor("silver")
-            ax.set_ylabel("kW")
-            ax.set_xlabel("Time (h)")
-            ax.yaxis.grid(True)
-            ax.plot(ENERGY_GENERATED_RENDER, color='k')
-            ax.bar(x=np.array(np.arange(self.iterations)) - 0.2, height=TCL_CONTROL_RENDER, width=0.2)
-            ax.bar(x=np.array(np.arange(self.iterations)), height=TCL_CONSUMPTION_RENDER, width=0.2)
-            plt.xticks( np.array(np.arange(self.iterations)) )
-            plt.title("Energy allocated to and consumed by TCLs and energy generated")
-            plt.legend(['Energy generated','Energy allocated for TCLs', 'Energy consumed by TCLs'])
-            plt.xlabel("Time (h)")
-            plt.ylabel("kW")
+            
+            
+
             plt.show()
+            
+            ax = plt.axes()
+            #ax = plt.subplot(2, 1, 2)
+            ax.set_facecolor("silver")
+            ax.set_ylabel("kW",fontsize=fontsize2)
+            ax.set_xlabel("Tiempo (h)", fontsize=fontsize2)
+            ax1 = ax.twinx()
+            ax1.plot(np.array(BATTERY_RENDER), color='y')
+            ax1.set_ylim([0,1])
+            ax.yaxis.grid(True)
+            ax.plot(ENERGY_GENERATED_RENDER, color='k', label="Energia Generada")
+            ax.plot(np.array(TOTAL_CONSUMPTION_RENDER), color='r', label="Demanda de Energia")
+            ax.plot(np.nan, color='y', label="Energia Almacenada")
+            ax.bar(x=np.array(np.arange(self.iterations)) - 0.2, height=TCL_CONTROL_RENDER, width=0.2, label= 'Energia asignada a los TCLs')
+            ax.bar(x=np.array(np.arange(self.iterations)), height=TCL_CONSUMPTION_RENDER, width=0.2, label = 'Energy consumida por los TCLs')
+            ax1.set_ylabel("SOC",fontsize=fontsize2)
+            #ax1.legend(['Energia Almacenada'],fontsize=fontsize1, loc="upper left")
+            plt.xticks( np.array(np.arange(self.iterations+0.1,step=6)), fontsize=12.5, rotation=90)
+            #plt.title("Energia asignada a y consumida por los TCLs",fontsize=fontsize2)
+            ax.legend(fontsize=fontsize1, loc="upper right")
+            plt.xlabel("Tiempo (h)",fontsize=fontsize2)
+            #plt.ylabel("kW", fontsize=fontsize2)
+            
+            plt.savefig(f"{foldername}/energyallocated", bbox_inches='tight')
+            plt.show()
+            
 
             # ax = plt.axes()
             # ax.set_facecolor("silver")
             # ax.yaxis.grid(True)
             # plt.plot(PRICE_RENDER,color='k')
-            # plt.title("SALE PRICES")
-            # plt.xlabel("Time (h)")
-            # plt.ylabel("€ cents")
+            # plt.title("SALE PRICES",fontsize=fontsize2)
+            # plt.xlabel("Time (h)",fontsize=fontsize2)
+            # plt.ylabel("€ cents", fontsize=fontsize2)
+            # plt.savefig(f"{foldername}/Saleprices")
             # plt.show()
-            #
+            
+        
+            ax = plt.axes()
+            ax.set_facecolor("silver")
+            ax.set_xlabel("Tiempo (h)")
+            ax.yaxis.grid(True)
+            plt.plot(np.array(BATTERY_RENDER),color='k')
+            plt.title("ESS SOC", fontsize=fontsize2)
+            plt.xlabel("Tiempo (h)", fontsize=fontsize2)
+            ## ax4.set_ylabel("BATTERY SOC")
+            plt.savefig(f"{foldername}/Batterysoc")
+            plt.show()
+            
+        
+        
             # ax = plt.axes()
             # ax.set_facecolor("silver")
-            # ax.set_xlabel("Time (h)")
-            # ax.yaxis.grid(True)
-            # plt.plot(np.array(BATTERY_RENDER),color='k')
-            # plt.title("ESS SOC")
-            # plt.xlabel("Time (h)")
-            # # ax4.set_ylabel("BATTERY SOC")
-            # plt.show()
-            #
-            #
-            # ax = plt.axes()
-            # ax.set_facecolor("silver")
-            # ax.set_xlabel("Time (h)")
-            # ax.set_ylabel("kWh")
+            # ax.set_xlabel("Time (h)", fontsize=fontsize2)
+            # ax.set_ylabel("kWh", fontsize=fontsize2)
             # ax.yaxis.grid(True)
             # plt.plot(np.array(TOTAL_CONSUMPTION_RENDER), color='k')
-            # plt.title("Demand")
-            # plt.xlabel("Time (h)")
+            # plt.title("Demand", fontsize=fontsize2)
+            # plt.xlabel("Time (h)", fontsize=fontsize2)
+            # plt.savefig(f"{foldername}/consumo")
             # plt.show()
-            #
-            #
-            #
+            
+        
             # ax = plt.axes()
             # ax.set_facecolor("silver")
             # ax.set_xlabel("Time (h)")
             # ax.yaxis.grid(True)
             # plt.plot(np.array(self.typical_load), color='k')
-            # plt.title("Expected Individual basic load (L_b)")
-            # plt.xlabel("Time (h)")
-            # plt.ylabel("kWh")
+            # plt.title("Expected Individual basic load (L_b)",fontsize=fontsize2)
+            # plt.xlabel("Time (h)", fontsize=fontsize2)
+            # plt.ylabel("kWh",fontsize=fontsize2)
             # plt.show()
-            #
+        
             # ax = plt.axes()
             # ax.set_facecolor("silver")
             # ax.set_ylabel("kW")
             # ax.set_xlabel("Time (h)")
             # ax.yaxis.grid(True)
             # plt.boxplot(np.array(LOADS_RENDER).T)
-            # plt.title("Hourly residential loads")
-            # plt.xlabel("Time (h)")
+            # plt.title("Hourly residential loads",fontsize=fontsize2)
+            # plt.xlabel("Time (h)",fontsize=fontsize2)
             # plt.show()
-            #
-            #
-            #
+        
+        
+
             # ax = plt.axes()
             # ax.set_facecolor("silver")
             # ax.yaxis.grid(True)
             # plt.plot(np.array(ENERGY_GENERATED_RENDER),color='k')
-            # plt.title("ENERGY GENERATED")
-            # plt.xlabel("Time (h)")
-            # plt.ylabel("kW")
-            # plt.show()
-            #
-            # ax = plt.axes()
-            # ax.set_facecolor("silver")
-            # ax.yaxis.grid(True)
-            # # ax.axis(ymin=0,ymax=610)
-            # ax.bar(x=np.array(np.arange(self.iterations)),height=np.array(ENERGY_SOLD_RENDER),color='navy', width=0.8)
-            # ax.bar(x=np.array(np.arange(self.iterations)),height=np.array(ENERGY_BOUGHT_RENDER),color='darkred', width=0.8)
-            # ax.set_xlabel("Time (h)")
-            # ax.set_ylabel("Energy Exchanged kWh")
-            # ax.legend(['Energy sold', 'Energy purchased'],loc='upper left')
-            # # pyplot.show()
-            #
-            # ax1=ax.twinx()
-            # ax1.plot(np.array(GRID_PRICES_BUY_RENDER),color='red')
-            # ax1.plot(np.array(GRID_PRICES_SELL_RENDER), color='green')
-            # ax1.set_ylabel("GRID PRICES € cents")
-            # ax1.legend(['Buying prices','Selling prices'],loc='upper right')
+            # plt.title("ENERGY GENERATED",fontsize=fontsize2)
+            # plt.xlabel("Time (h)",fontsize=fontsize2)
+            # plt.ylabel("kW",fontsize=fontsize2)
             # plt.show()
 
+            matplotlib.rc('xtick', labelsize=13) 
+            matplotlib.rc('ytick', labelsize=13)
+            ax = plt.axes()
+            ax.set_facecolor("silver")
+            ax.yaxis.grid(True)
+            # ax.axis(ymin=0,ymax=610)
+            print('iterations:', self.iterations)
+            ax.bar(x=np.array(np.arange(self.iterations)),height=np.array(ENERGY_SOLD_RENDER),color='navy', width=0.8)
+            ax.bar(x=np.array(np.arange(self.iterations)),height=np.array(ENERGY_BOUGHT_RENDER),color='darkred', width=0.8)
+            ax1=ax.twinx()
+            ax1.plot(np.array(ENERGY_GENERATED_RENDER),color='k')
+            ax.set_xlabel("Tiempo (h)", fontsize=fontsize2)
+            ax.set_ylabel("Energia intervambiada kWh", fontsize=fontsize2)
+            ax.legend(['Energia Vendida', 'Energia Comprada'],loc='upper right',fontsize=fontsize1)
+            # pyplot.show()
+            
+            
+            #ax1.plot(np.array(GRID_PRICES_SELL_RENDER), color='green')
+            ax1.set_ylabel("Precios € (Centavos)", fontsize=fontsize2)
+            ax1.legend(['Energia Generada'],loc='upper left', fontsize=fontsize1)
+            #ax.set_zorder(1)
+            plt.savefig(f"{foldername}/energia_int",bbox_inches='tight')
+            plt.show()
+            
+ 
+            import csv
+
+            # Open a new file in write mode
+            with open(f'{foldername}/output.csv', 'w', newline='') as f:
+                # Create a CSV writer
+                writer = csv.writer(f)
+                # Write the header row
+                writer.writerow(['SOCs', 'Loads', 'Price', 'Battery', 'Energy Generated', 'Energy Sold', 'Energy Bought', 'Grid Buy Prices', 'Grid Sell Prices', 'TCL Control', 'TCL Consumption', 'Total Consumption', 'Temperature'])
+                # Write the contents of each list to the file, one row per list
+                for socs, loads, price, battery, energy_gen, energy_sold, energy_bought, grid_buy, grid_sell, tcl_control, tcl_consump, total_consump, temp in zip(SOCS_RENDER, LOADS_RENDER, PRICE_RENDER, BATTERY_RENDER, ENERGY_GENERATED_RENDER, ENERGY_SOLD_RENDER, ENERGY_BOUGHT_RENDER, GRID_PRICES_BUY_RENDER, GRID_PRICES_SELL_RENDER, TCL_CONTROL_RENDER, TCL_CONSUMPTION_RENDER, TOTAL_CONSUMPTION_RENDER, TEMP_RENDER):
+                    writer.writerow([socs, loads, price, battery, energy_gen, energy_sold, energy_bought, grid_buy, grid_sell, tcl_control, tcl_consump, total_consump, temp])
+
+            import pickle
+            import json
+            with open(f"{foldername}/lists.pkl", "wb") as f:
+                pickle.dump([SOCS_RENDER, LOADS_RENDER, PRICE_RENDER, BATTERY_RENDER, ENERGY_GENERATED_RENDER, ENERGY_SOLD_RENDER, ENERGY_BOUGHT_RENDER, GRID_PRICES_BUY_RENDER, GRID_PRICES_SELL_RENDER, TCL_CONTROL_RENDER, TCL_CONSUMPTION_RENDER, TOTAL_CONSUMPTION_RENDER, TEMP_RENDER], f)
+
+            with open(f"{foldername}/lists.json", "w") as f:
+                json.dump([SOCS_RENDER, LOADS_RENDER, PRICE_RENDER, BATTERY_RENDER, ENERGY_GENERATED_RENDER, ENERGY_SOLD_RENDER, ENERGY_BOUGHT_RENDER, GRID_PRICES_BUY_RENDER, GRID_PRICES_SELL_RENDER, TCL_CONTROL_RENDER, TCL_CONSUMPTION_RENDER, TOTAL_CONSUMPTION_RENDER, TEMP_RENDER], f)
 
 
-
-
-
-            # np.save(name + 'Cost' + str(self.day) + '.npy', self.grid.total_cost(np.array(GRID_PRICES_RENDER),np.array(ENERGY_BOUGHT_RENDER)))
+            #np.save(name + 'Cost' + str(self.day) + '.npy', self.grid.total_cost(np.array(GRID_PRICES_RENDER),np.array(ENERGY_BOUGHT_RENDER)))
             # np.save(name + 'Energy_bought_sold' + str(self.day) + '.npy', np.array(ENERGY_BOUGHT_RENDER)-np.array(ENERGY_SOLD_RENDER))
             # np.save(name+'TOTAL_Consumption'+str(self.day)+'.npy' , TOTAL_CONSUMPTION_RENDER)
             SOCS_RENDER.clear()

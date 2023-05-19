@@ -8,14 +8,14 @@ POP_SHAPE=[100,24,4]
 P_C = 0.8 #Probability of crossover
 P_M = 0.5 #Probability of mutation
 
-MAX_ITER=200
-EARLY_STOP=50
+MAX_ITER=400
+EARLY_STOP=200
 V=[4,5,2,2]
 
 DAY0=50
 DAYN=60
 
-def objective_function(element, day, render=False):
+def objective_function(element, day, render=False,render_name=''):
     # assert (element.shape == POP_SHAPE[1:])
     # print(element.shape)
     # print(day)
@@ -23,8 +23,8 @@ def objective_function(element, day, render=False):
     state = enviro.reset(day=day)
     R=0
     for action in element:
-        if render: enviro.render()
         s_, r, done, _ = enviro.step(list(action))
+        if render: enviro.render(name=render_name)
         R += r
     # print(R)
     return R
@@ -168,9 +168,10 @@ def run(day):
 
 if __name__=="__main__":
     REWARDS=[]
-    for day in range(DAY0,DAYN):
+    days = [56]
+    for day in days:
         solution , R = run(day)
-        objective_function(solution,day=day, render=False)
+        objective_function(solution,day=day, render=True,render_name=f'Optimizer results {day}')
         REWARDS.append(R)
     import pickle
     with open("GA_OPT.pkl", 'wb') as f:
@@ -226,4 +227,5 @@ if __name__=="__main__":
     #     , [1, 3, 1, 0]
     #     , [3, 3, 1, 0]
     #     , [2, 4, 0, 0]])
-    # objective_function(solution,render=True)
+    for i in days:
+        objective_function(solution,day=i,render=True)
